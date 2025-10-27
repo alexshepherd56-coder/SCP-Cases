@@ -697,7 +697,8 @@
   
 
   <script>
-    /* === HEADER HIDE/SHOW ON SCROLL === */
+    document.addEventListener('DOMContentLoaded', () => {
+      /* === HEADER HIDE/SHOW ON SCROLL === */
     let lastScrollTop = 0;
     const header = document.getElementById("pageHeader");
     window.addEventListener("scroll", () => {
@@ -712,40 +713,30 @@
 
     /* === MODAL BEHAVIOUR === */
     const modalBackdrop = document.getElementById('modalBackdrop');
-    const modalClose = document.getElementById('modalClose');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
     const modalTitle = document.getElementById('modalTitle');
     const modalBody = document.getElementById('modalBody');
 
-    function openModal(title, bodyHTML) {
-      modalTitle.textContent = title || 'Case';
-      modalBody.innerHTML = bodyHTML || '<p>Case will be available soon.</p>';
-      modalBackdrop.classList.add('active');
-      document.body.style.overflow = 'hidden';
-    }
     function closeModal() {
-      modalBackdrop.classList.remove('active');
-      document.body.style.overflow = '';
+      if (modalBackdrop) modalBackdrop.classList.remove('active');
+      if (document.body) document.body.style.overflow = '';
     }
 
-    modalClose.addEventListener('click', closeModal);
-    modalBackdrop.addEventListener('click', (e) => {
-      // Close when clicking outside the modal card
-      const card = e.target.closest('.modal-card');
-      if (!card || card === e.target) {
-        closeModal();
-      }
-    });
+    if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeModal);
+    if (modalBackdrop) {
+      modalBackdrop.addEventListener('click', (e) => {
+        // Close when clicking outside the modal card
+        const card = e.target.closest('.modal-card');
+        if (!card || card === e.target) {
+          closeModal();
+        }
+      });
+    }
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeModal();
     });
 
-    // Bind all case cards
-    document.querySelectorAll('.case-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const title = card.getAttribute('data-title') || card.textContent.trim();
-        openModal(title, '<p>Case will be available soon.</p>');
-      });
-    });
+    window.closeModal = closeModal;
 
     /* === FILTERING & COUNTS (SCP2 behavior preserved) === */
     const specialties = document.querySelectorAll('.specialty');
@@ -847,6 +838,7 @@
       if (targetSpec) targetSpec.click();
       else document.querySelector('h2[data-group="all"]').click();
     }
+    });
   </script>
 
   <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
@@ -864,92 +856,13 @@
     document.querySelectorAll('.case-card').forEach(card => {
       card.addEventListener('click', () => {
         const title = card.getAttribute('data-title') || card.textContent.trim();
-        if (typeof window.openModal === 'function') window.openModal(title);
+        if (typeof window.openModal === 'function') window.openModal(title, card);
       });
     });
   </script>
 
 
   
-  <script>
-    const week30 = JSON.parse(document.getElementById('week30Data').textContent);
-    function renderCaseToModal(title) {
-      const body = document.getElementById('modalBody');
-      const titleEl = document.getElementById('modalTitle');
-      titleEl.textContent = title;
-      const data = week30[title];
-      if (data) {
-        const metaHtml = Array.isArray(data.meta) && data.meta.length
-          ? `<div class="meta">${data.meta.map((item, idx) => idx === 0 ? item : `<span class="dot"></span>${item}`).join('')}</div>`
-          : '';
-        const summaryHtml = data.summary
-          ? `<div class="section"><h3>Case Summary</h3><div class="case-text"><p>${data.summary}</p></div></div>`
-          : '';
-        let pdfHtml = '';
-        if (data.pdf) {
-          const rawPath = Array.isArray(data.pdf) ? data.pdf[0] : data.pdf;
-          const pdfUrl = rawPath
-            .split('/')
-            .map(segment => encodeURIComponent(segment))
-            .join('/');
-          const viewerUrl = `${pdfUrl}#toolbar=0&navpanes=0&scrollbar=0`;
-          const viewerEsc = viewerUrl.replace(/&/g, '&amp;');
-          pdfHtml = `
-            <div class="section">
-              <h3>Case PDF</h3>
-              <div class="pdf-frame">
-                <embed src="${viewerEsc}" type="application/pdf" class="pdf-embed" />
-              </div>
-              <p class="pdf-download"><a href="${pdfUrl}" target="_blank" rel="noopener">Open PDF in new tab</a></p>
-            </div>`;
-        }
-        body.innerHTML = metaHtml + summaryHtml + pdfHtml;
-      } else {
-        body.innerHTML = `
-          <div class="meta"></div>
-          <div class="section">
-            <h3>Case</h3>
-            <div class="case-text"><p>Case will be available soon.</p></div>
-          </div>
-          <div class="section">
-            <h3>Questions</h3>
-            <div class="qa-card">
-              <div class="qa-q">Questions will appear here when this case is populated.</div>
-            </div>
-          </div>`;
-      }
-      body.querySelectorAll('.qa-toggle').forEach(btn => {
-        const id = btn.getAttribute('data-target');
-        const target = body.querySelector('#' + CSS.escape(id));
-        if (!target) return;
-        target.style.display = 'none';
-        btn.addEventListener('click', () => {
-          const open = target.style.display !== 'none';
-          target.style.display = open ? 'none' : 'block';
-          btn.textContent = open ? 'Show Answer' : 'Hide Answer';
-        });
-      });
-    }
-    // Override openModal for all cases
-    (function(){
-      const oldOpen = window.openModal;
-      window.openModal = function(title) {
-        renderCaseToModal(title);
-        document.getElementById('modalBackdrop').classList.add('active');
-        document.body.style.overflow = 'hidden';
-      };
-    })();
-    // Close handlers
-    function closeModal() {
-      document.getElementById('modalBackdrop').classList.remove('active');
-      document.body.style.overflow = '';
-    }
-    document.addEventListener('click', (e) => {
-      if (e.target && (e.target.id === 'modalBackLink' || e.target.id === 'modalCloseBtn')) closeModal();
-    });
-  </script>
-
-
   <script>
     (function(){
       const specialties = Array.from(document.querySelectorAll('.specialty'));
@@ -1044,720 +957,150 @@
       window._updateCounts = updateCounts;
     })();
   </script>
-  <script id="week30Data" type="application/json">
-    {
-      "30.1 Microcytic Anaemia": {
-        "summary": "Gabriella Pesce, 24, presents with fatigue and pallor after adopting a vegetarian diet, raising concern for iron-deficiency anaemia.",
-        "meta": ["Haematology", "Medicine", "General Practice"],
-        "pdf": "Haematology/30.1_Microcytic Anaemia.pdf"
-      },
-      "30.2 Macrocytic Anaemia": {
-        "summary": "Maude McArthur, 75, has a painful, inflamed tongue and limited diet of tea and toast, suggesting macrocytic anaemia from nutritional deficiency.",
-        "meta": ["Haematology", "Medicine", "General Practice"],
-        "pdf": "Haematology/30.2_Macrocytic Anaemia.pdf"
-      },
-      "30.3 Aplastic Anaemia [SDL]": {
-        "summary": "Julian Barker, 25, develops persistent oral thrush, gum bleeding, and pancytopenia consistent with aplastic anaemia.",
-        "meta": ["Haematology", "Medicine", "Hospital Ward"],
-        "pdf": "Haematology/30.3_Aplastic Anaemia [SDL].pdf"
-      },
-      "30.4 Haemolytic Anaemia [SDL]": {
-        "summary": "Ambrose Okeke, 25, lives with sickle cell disease and presents with severe leg pain and low-grade fever consistent with a vaso-occlusive crisis and haemolytic anaemia.",
-        "meta": ["Haematology", "Medicine", "Emergency Department"],
-        "pdf": "Haematology/30.4_Haemolytic Anaemia [SDL].pdf"
-      },
-      "30.5 Myelofibrosis": {
-        "summary": "Margaret Lewis, 60, reports months of fatigue, weight loss, anaemia, and marked splenomegaly prompting suspicion of myelofibrosis.",
-        "meta": ["Haematology", "Medicine", "Hospital Ward"],
-        "pdf": "Haematology/30.5_Myelofibrosis.pdf"
-      },
-      "30.6 Thrombocytopaenia": {
-        "summary": "Sybilla Hanson, 35, rapidly develops extensive lower-limb purpura without trauma, raising concern for immune thrombocytopaenia.",
-        "meta": ["Haematology", "Medicine", "General Practice"],
-        "pdf": "Haematology/30.6_Thrombocytopaenia.pdf"
+  
+  <script src="assets/js/case-pdfs.js"></script>
+  <script>
+    (function(){
+      const pdfMap = window.CASE_PDFS || {};
+      const modalBackdrop = document.getElementById('modalBackdrop');
+      const modalTitle = document.getElementById('modalTitle');
+      const modalBody = document.getElementById('modalBody');
+      if (!modalBackdrop || !modalTitle || !modalBody) return;
+      const classLabels = {
+        cardiology: 'Cardiology',
+        psychiatry: 'Psychiatry',
+        paediatrics: 'Paediatrics',
+        neurology: 'Neurology',
+        gastroenterology: 'Gastroenterology',
+        endocrinology: 'Endocrinology',
+        renal: 'Renal',
+        respiratory: 'Respiratory',
+        rheumatology: 'Rheumatology',
+        og: 'O&G',
+        haematology: 'Haematology',
+        git: 'GIT',
+        general: 'General Surgery',
+        breast: 'Breast & Endocrine',
+        ortho: 'Orthopaedics',
+        vascular: 'Vascular'
+      };
+
+      const decoder = document.createElement('textarea');
+      function decodeHtml(str) {
+        if (!str) return '';
+        decoder.innerHTML = str;
+        return decoder.value;
       }
-    }
+
+      function normalize(str) {
+        return decodeHtml(str)
+          .replace(/’/g, "'")
+          .replace(/[–—]/g, '-')
+          .replace(/osteoperosis/gi, 'osteoporosis')
+          .replace(/\[sld\]/gi, '(sdl)')
+          .replace(/\[sdl\]/gi, '(sdl)')
+          .replace(/\[/g, '(')
+          .replace(/\]/g, ')')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+      }
+
+      const normalizedIndex = new Map();
+      function registerKey(key, path) {
+        const normalised = normalize(key);
+        if (!normalised) return;
+        if (!normalizedIndex.has(normalised)) {
+          normalizedIndex.set(normalised, path);
+        }
+      }
+
+      Object.entries(pdfMap).forEach(([title, path]) => {
+        if (path == null) {
+          registerKey(title, null);
+          registerKey(title.replace(/^\d+(?:\.\d+)?\s*/, ''), null);
+          return;
+        }
+        registerKey(title, path);
+        const decoded = decodeHtml(title);
+        registerKey(decoded.replace(/^\d+(?:\.\d+)?\s*/, ''), path);
+        registerKey(decoded.replace(/\s*\(.*?\)/g, ''), path);
+        registerKey(decoded.replace(/\s*\[.*?\]/g, ''), path);
+      });
+
+      function resolvePdf(rawTitle) {
+        const decodedTitle = decodeHtml(rawTitle);
+        if (Object.prototype.hasOwnProperty.call(pdfMap, decodedTitle)) {
+          return { title: decodedTitle, path: pdfMap[decodedTitle] };
+        }
+        const candidates = [decodedTitle, decodedTitle.replace(/^\d+(?:\.\d+)?\s*/, '')];
+        for (const candidate of candidates) {
+          const key = normalize(candidate);
+          if (normalizedIndex.has(key)) {
+            return { title: decodedTitle, path: normalizedIndex.get(key) };
+          }
+        }
+        return { title: decodedTitle, path: null };
+      }
+
+      function buildMeta(card) {
+        if (!card) return '';
+        const parts = [];
+        const weekHeading = card.closest('.case-grid')?.previousElementSibling;
+        if (weekHeading && weekHeading.classList.contains('week')) {
+          parts.push(weekHeading.textContent.trim());
+        }
+        const specialtyClass = Array.from(card.classList).find(cls => cls !== 'case-card');
+        if (specialtyClass) {
+          parts.push(classLabels[specialtyClass] || specialtyClass.replace(/-/g, ' '));
+        }
+        if (!parts.length) return '';
+        return `<div class="meta">${parts.map((part, idx) => idx === 0 ? part : `<span class="dot"></span>${part}`).join('')}</div>`;
+      }
+
+      function encodePath(path) {
+        return path.split('/').map(encodeURIComponent).join('/');
+      }
+
+      function renderCase(rawTitle, card) {
+        const { title, path } = resolvePdf(rawTitle);
+        modalTitle.textContent = title || 'Case';
+        const metaHtml = buildMeta(card);
+        if (path) {
+          const encoded = encodePath(path);
+          const viewerUrl = `${encoded}#toolbar=0&navpanes=0&scrollbar=0`;
+          const viewerEsc = viewerUrl.replace(/&/g, '&amp;');
+          modalBody.innerHTML = `
+            ${metaHtml}
+            <div class="section">
+              <h3>Case PDF</h3>
+              <div class="pdf-frame">
+                <embed src="${viewerEsc}" type="application/pdf" class="pdf-embed" />
+              </div>
+              <p class="pdf-download"><a href="${encoded}" target="_blank" rel="noopener">Open PDF in new tab</a></p>
+            </div>`;
+        } else {
+          modalBody.innerHTML = `
+            ${metaHtml}
+            <div class="section">
+              <h3>Case</h3>
+              <div class="case-text"><p>PDF coming soon. Add a matching file under assets/pdfs/ to populate this case.</p></div>
+            </div>`;
+        }
+        if (modalBackdrop) modalBackdrop.classList.add('active');
+        if (document.body) document.body.style.overflow = 'hidden';
+      }
+
+      window.openModal = function(rawTitle, card) {
+        renderCase(rawTitle, card);
+      };
+
+      document.addEventListener('click', (e) => {
+        if (e.target && e.target.id === 'modalCloseBtn') {
+          if (typeof window.closeModal === 'function') window.closeModal();
+        }
+      });
+    })();
   </script>
-<!-- =========================
-  WEEK 30 — HAEMATOLOGY MODALS
-  ========================= -->
-
-<!-- 30.1 Microcytic Anaemia (Haematology) -->
-<div class="modal-backdrop" data-title="30.1 Microcytic Anaemia" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.1 Microcytic Anaemia (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>General Practice</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Gabriella Pesce, 24, presents with worsening fatigue. She has adopted a vegetarian diet to control weight and appears pale (family also concerned). You suspect anaemia related to diet.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. What are the key features of history and examination in your assessment of Gabriella and why?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Features of anaemia:</strong> SOB, fatigue, pallor.</li>
-              <li><strong>Iron deficiency stigmata:</strong> glossitis, angular stomatitis, koilonychia, Plummer–Vinson dysphagia, brittle hair, pica, achlorhydria.</li>
-              <li><strong>Bleeding/menstrual history</strong> and diet review (vegetarian/low iron intake).</li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. What is anaemia?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Reduced haemoglobin: &lt;135 g/L (adult male), &lt;115 g/L (adult female).</li>
-              <li>Not a disease itself—reflects underlying process; may be dilutional (e.g., pregnancy).</li>
-              <li>Classify by MCV: microcytic, macrocytic, normocytic; or by mechanism.</li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Why does lack of iron cause anaemia?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Depletion sequence: <strong>marrow iron stores ↓ (ferritin ↓)</strong> → serum iron ↓ &amp; TIBC ↑ (latent) → <strong>impaired Hb synthesis</strong> → overt anaemia.</li>
-              <li>Later, iron lost from liver/skin/muscle.</li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. Microcytosis with low Hb: causes and how iron studies help?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Causes:</strong> iron deficiency (commonest), sideroblastic anaemia, thalassaemia, anaemia of chronic disease, lead poisoning.</li>
-              <li><strong>Blood film:</strong> hypochromic microcytosis; target cells/basophilic stippling more in haemoglobinopathies.</li>
-              <li><strong>Distinguish IDA vs thalassaemia:</strong> ethnic background; RBC count vs Hb; <strong>RDW ↑ in IDA, normal in thalassaemia.</strong></li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. Outline your plans to investigate Gabriella’s anaemia.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>FBC with indices, blood film, reticulocytes.</li>
-              <li>Iron studies: ferritin, serum iron, transferrin/TIBC, TSAT.</li>
-              <li>Consider coeliac screen, menstrual/GI blood loss workup; dietary review.</li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Explain iron absorption and metabolism relevant to management.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Absorption mainly in duodenum/jejunum; enhanced by acidity and vitamin C; inhibited by phytates/tannins.</li>
-              <li>Transported on transferrin; stored as ferritin/haemosiderin; regulated by hepcidin.</li>
-              <li>Dietary optimisation + oral iron replacement.</li>
-            </ul>
-            fileciteturn0file1
-          </div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.1_Microcytic Anaemia.pdf fileciteturn0file1</div>
-    </div>
-  </div>
-</div>
-
-<!-- 30.2 Macrocytic Anaemia (Haematology) -->
-<div class="modal-backdrop" data-title="30.2 Macrocytic Anaemia" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.2 Macrocytic Anaemia (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>General Practice</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Maude McArthur, 75, presents with a sore, inflamed tongue and angular cheilitis. Diet recently reduced to tea and toast. You suspect nutritional deficiency causing macrocytic anaemia.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. Key features of history and examination and why?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Dietary intake (green leafy veg), dentition, home/cooking situation, alcohol.</li>
-              <li>Autoimmune risks for pernicious anaemia (other autoimmune disease, FHx).</li>
-              <li>Examination for severe anaemia and <strong>neurology</strong> (B12: peripheral neuropathy, subacute combined degeneration, optic/mental changes).</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. Clinical findings suggesting B12 and/or folate deficiency?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Skin/oral:</strong> angular cheilosis, beefy red glossitis, pigmentation, alopecia.</li>
-              <li><strong>GI:</strong> anorexia, weight loss, malabsorption.</li>
-              <li><strong>CNS:</strong> dementia, peripheral neuropathy, SACD (gait, paraesthesiae, weakness), optic atrophy.</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Role of Vitamin B12 and folate in red cell metabolism.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Co-factors for <strong>DNA synthesis/repair/methylation</strong>; essential in rapidly dividing cells (erythropoiesis).</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. Why macrocytosis with B12/folate deficiency?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Nuclear–cytoplasmic asynchrony:</strong> DNA synthesis impaired; RNA/protein relatively preserved → cytoplasmic enlargement with delayed mitosis → large oval RBCs.</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. Pernicious anaemia: mechanism and B12 absorption overview.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>B12 from animal foods; requires gastric acid and <strong>intrinsic factor</strong> for absorption in terminal ileum.</li>
-              <li><strong>Pernicious anaemia:</strong> autoimmune loss of IF/parietal cells → malabsorption → B12 deficiency despite intake.</li>
-              <li>Liver stores for years; daily requirement ~3–5 μg.</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Investigations for suspected pernicious anaemia.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>FBC/film (macro-ovalocytes), B12, folate, reticulocytes, LDH, bilirubin.</li>
-              <li>Intrinsic factor/parietal cell antibodies; consider coeliac/autoimmune screen.</li>
-              <li>Assess for neurological involvement.</li>
-            </ul>
-            fileciteturn0file2
-          </div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.2_Macrocytic Anaemia.pdf fileciteturn0file2</div>
-    </div>
-  </div>
-</div>
-
-<!-- 30.3 Aplastic Anaemia (SDL) (Haematology) -->
-<div class="modal-backdrop" data-title="30.3 Aplastic Anaemia (SDL)" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.3 Aplastic Anaemia (SDL) (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>Hospital Ward</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Julian Barker, 25, has persistent oral thrush and gum bleeds. FBC: anaemia with low neutrophils and platelets. Provisional diagnosis: aplastic anaemia.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. What is aplastic anaemia?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Pancytopenia (anaemia, thrombocytopenia, neutropenia) with <strong>hypocellular/acellular marrow</strong>; &gt;70% idiopathic; remainder acquired/congenital.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. Key features of history/examination and why?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Identify <strong>causes</strong>: drugs, viral infections (e.g., hepatitis), rheumatologic/immune, pregnancy.</li>
-              <li>Assess for marrow failure triad: anaemia (fatigue), bleeding (mucocutaneous), infection (neutropenia).</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Clinical features and underlying pathophysiology?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Immune-mediated suppression of haematopoiesis (T-cell mediated); stem-cell defect likely.</li>
-              <li>Features: anaemia, bleeding, bacterial infections; hepatosplenomegaly/lymphadenopathy uncommon (suggests alternate dx).</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. Poor prognostic investigation findings?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Diagnostic criteria (peripheral + marrow) and poor prognosis when ≥2 of: ANC &lt;0.5×10⁹/L; platelets &lt;20×10⁹/L; reticulocytes &lt;40×10⁹/L.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. Why protective isolation and how implemented on the ward?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Protect patient from Multi-Resistant Organisms due to neutropenia: PPE station; signage; daily first clean; aseptic technique for lines/dressings; frequent surface cleaning.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Principles of supportive care in marrow failure.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Transfuse RBCs/platelets as needed; prompt antibiotics for infection; growth factors/definitive therapy per specialist.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q7. ABO/Rh meaning of “B positive”.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>ABO type B antigen present; anti-A in plasma; Rh(D) antigen present.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q8. Immunological and non-immunological transfusion complications (for consent).</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Immunological:</strong> acute/delayed haemolytic, febrile non-haemolytic, allergic/anaphylaxis, TRALI, alloimmunisation.</li>
-              <li><strong>Non-immunological:</strong> TACO, infection risk (very low), iron overload (chronic), citrate toxicity, electrolyte disturbances.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q9. Steps to minimise error in transfusion administration.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Strict patient ID checks, compatibility testing, bedside cross-checks, documentation, monitoring during transfusion per protocol.</li>
-            </ul>
-            fileciteturn0file3
-          </div>
-        </div>
-
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.3_Aplastic Anaemia [SDL].pdf fileciteturn0file3</div>
-    </div>
-  </div>
-</div>
-
-<!-- 30.4 Haemolytic Anaemia (SDL) (Haematology) -->
-<div class="modal-backdrop" data-title="30.4 Haemolytic Anaemia (SDL)" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.4 Haemolytic Anaemia (SDL) (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>Emergency Department</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Ambrose Okeke, 25, from South Africa with sickle cell disease presents with severe left leg pain; febrile 37.8°C; prior crises requiring narcotics.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. Pathophysiology of severe bone pain in SCD; anaemia, splenic sequestration and marrow aplasia mechanisms.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Vaso-occlusion from sickling → infarctive crises (bone, chest, CNS, spleen, liver, priapism).</li>
-              <li><strong>Anaemia:</strong> shortened RBC survival (~20 days) due to haemolysis.</li>
-              <li><strong>Splenic sequestration:</strong> pooling/infarction in spleen.</li>
-              <li><strong>Marrow aplasia:</strong> transient suppression (e.g., parvovirus B19).</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. Pathophysiology and consequences in haemolytic anaemias.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>RBC survival markedly shortened; marrow compensates up to 6–8× output (reticulocytosis).</li>
-              <li>If loss exceeds capacity → anaemia; intravascular vs extravascular haemolysis patterns.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Fate of haemoglobin after haemolysis (plasma/urine handling).</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Free Hb binds haptoglobin (saturable) → liver clearance; excess filtered by kidney → haemoglobinuria; tubular reabsorption → haemosiderin; haemopexin pathway contributes.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. Investigations to determine cause of haemolysis (flow chart summary).</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>FBC/retics</strong> (↑ if compensated); <strong>film</strong> (polychromasia, spherocytes/elliptocytes/sickle cells), <strong>bilirubin</strong> (unconjugated ↑), <strong>LDH</strong> ↑, <strong>haptoglobin</strong> ↓.</li>
-              <li>Urine: urobilinogen ↑; haemoglobinuria/haemosiderinuria (intravascular).</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. Blood film features in SCD with anaemia (Hb ~80 g/L, high retic).</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Normochromic normocytic anaemia; sickle cells and target cells present.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Haemoglobin abnormality and pathogenesis of sickling syndromes.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>β-globin mutation → HbS polymerisation under deoxygenation → membrane damage, rigidity, vaso-occlusion, haemolysis.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q7. Principles of management of an acute painful crisis in SCD.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Prompt analgesia (often opioids), hydration, oxygen if hypoxic, treat triggers/infection, consider transfusion/exchange in severe complications; supportive care.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q8. Long-term problems in SCD and underlying pathophysiology.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Chronic haemolysis/anaemia, functional asplenia, stroke, avascular necrosis, leg ulcers, pulmonary hypertension, priapism; due to recurrent vaso-occlusion and haemolysis.</li>
-            </ul>
-            fileciteturn0file4
-          </div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.4_Haemolytic Anaemia [SDL].pdf fileciteturn0file4</div>
-    </div>
-  </div>
-</div>
-
-<!-- 30.5 Myelofibrosis (Haematology) -->
-<div class="modal-backdrop" data-title="30.5 Myelofibrosis" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.5 Myelofibrosis (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>Hospital Ward</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Margaret Lewis, 60, 5 months of fatigue and weight loss; splenomegaly on exam; anaemia on FBC. Haematologist suspects myeloproliferative disorder/myelofibrosis.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. Key features of history/examination and why (with splenomegaly)?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Symptoms: anaemia (weakness, dyspnoea, dizziness), bleeding/bruising, infection/fever, jaundice, lymphadenopathy, bone pain, weight loss, paraesthesiae/skin rash.</li>
-              <li>Full haematological exam: nodes, hepatomegaly/ascites, testes, PR/pelvic, lungs/breast/skin (malignancy screen).</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. Spleen anatomy/function and physiological effects of hypersplenism.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Red pulp (sinuses/cords), white pulp (lymphoid follicles).</li>
-              <li>Functions: sequestration/phagocytosis of old/abnormal RBCs, extramedullary haematopoiesis, antibody production, platelet pooling.</li>
-              <li><strong>Hypersplenism:</strong> pancytopenia, haemolysis, ↑ plasma volume.</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Clinical features of myelofibrosis/hypersplenism and underlying pathophysiology.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Myelofibrosis: progressive marrow fibrosis (↑ PDGF), splenomegaly, extramedullary haematopoiesis (liver/spleen/LNs).</li>
-              <li>Insidious in &gt;50 yrs; fatigue/weakness; abdominal fullness/early satiety; massive spleen; hepatomegaly common.</li>
-              <li>Progression: severe anaemia, bleeding (thrombocytopenia), perisplenitis pain, bone pain, hyperuricaemia/gout, cachexia.</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. Investigations commonly undertaken for myelofibrosis and why?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>FBC: anaemia with leukoerythroblastic features; poikilocytes; tear-drop cells; WBC may be very high; platelets high then fall later.</li>
-              <li>BM aspiration often “dry tap”; core biopsy for fibrosis; consider molecular tests per specialist.</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. Post-splenectomy problems Margaret may face.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Overwhelming post-splenectomy infection (OPSI), thrombocytosis/thrombosis risk, vaccine-preventable infections susceptibility.</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Ongoing GP recommendations for infection prophylaxis post-splenectomy.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Vaccinations (pneumococcal, Hib, meningococcal, influenza, others per schedule), consider antibiotic prophylaxis per guidelines, prompt treatment for febrile illness.</li>
-            </ul>
-            fileciteturn0file5
-          </div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.5_Myelofibrosis.pdf fileciteturn0file5</div>
-    </div>
-  </div>
-</div>
-
-<!-- 30.6 Thrombocytopaenia (Haematology) -->
-<div class="modal-backdrop" data-title="30.6 Thrombocytopaenia" aria-hidden="true">
-  <div class="modal-card">
-    <div class="modal-header">
-      <button class="modal-back-link" onclick="this.closest('.modal-backdrop').classList.remove('active')">Close</button>
-      <h3 class="modal-title">30.6 Thrombocytopaenia (Haematology)</h3>
-      <button class="modal-close" onclick="this.closest('.modal-backdrop').classList.remove('active')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="meta">Haematology<span class="dot"></span>Medicine<span class="dot"></span>General Practice</div>
-
-      <div class="section">
-        <h3>Case Summary</h3>
-        <div class="case-text">
-          <p>Sybilla Hanson, 35, rapidly developing leg bruising (purpura), no trauma, otherwise well. Marked bilateral purpura on exam.</p>
-        </div>
-      </div>
-
-      <div class="section">
-        <h3>Questions &amp; Answers</h3>
-
-        <div class="qa-card">
-          <div class="qa-q">Q1. Key features of history and examination and why?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>General PMHx/FHx/social, meds/allergies.</li>
-              <li>Haem history: anaemia symptoms, mucosal/GI/menstrual bleeding, easy bruising/purpura, infection/fever, nodes, bone pain, weight loss.</li>
-              <li>Specifics: fever, pregnancy, OCP, haematuria, abdominal pain.</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q2. Normal haemostasis: vessel wall, platelets, coagulation, fibrinolysis — roles/functions.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>Vessel:</strong> reflex vasoconstriction; endothelial activation.</li>
-              <li><strong>Platelets:</strong> adhesion (collagen receptors), activation, degranulation; fibrinogen bridges aggregate platelets.</li>
-              <li><strong>Coagulation:</strong> intrinsic/extrinsic → common pathway; thrombin converts fibrinogen → fibrin for stable plug.</li>
-              <li><strong>Fibrinolysis:</strong> clot breakdown (plasmin system).</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q3. Investigations for a suspected bleeding disorder and rationale.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Repeat FBC + blood film (confirm true thrombocytopaenia; exclude CLL/MDS).</li>
-              <li>Renal/liver function; viral serology (EBV, hepatitis; consider HIV); autoantibodies (e.g., SLE).</li>
-              <li>B12/folate, immunoglobulins; clotting studies; bone marrow (secondary care) if indicated.</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q4. What is thrombocytopaenia and clinical effects by platelet count levels?</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Platelets &lt;100×10⁹/L; bleeding diathesis (reduced clotting capacity).</li>
-              <li>Manifestations: purpura/ecchymoses, mucosal bleeding, epistaxis, menorrhagia, PPH.</li>
-              <li>Severe (&lt;30×10⁹/L): retinal/subconjunctival, GI, intracranial bleeding (rare but serious).</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q5. ITP definition and contrast with TTP clinical picture.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li><strong>ITP:</strong> immune-mediated platelet destruction → isolated thrombocytopaenia; typically mucocutaneous bleeding.</li>
-              <li><strong>TTP:</strong> thrombotic microangiopathy with thrombocytopaenia, MAHA, neurological/renal involvement, fever; urgent therapy.</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-
-        <div class="qa-card">
-          <div class="qa-q">Q6. Stepwise management approach for ITP.</div>
-          <button class="qa-toggle">Show Answer</button>
-          <div class="qa-a">
-            <ul>
-              <li>Assess bleeding severity/platelet count; avoid antiplatelets/NSAIDs.</li>
-              <li>First-line: corticosteroids, IVIG if bleeding/severe.</li>
-              <li>Second-line: TPO-RAs, rituximab, splenectomy (selected cases); supportive measures and vaccination planning if splenectomy.</li>
-            </ul>
-            fileciteturn0file6
-          </div>
-        </div>
-      </div>
-
-      <div class="section" style="margin-top:8px; font-size:0.9rem; color:#666;">Source: 30.6_Thrombocytopaenia.pdf fileciteturn0file6</div>
-    </div>
-  </div>
-</div>
-
-<!-- ——— Simple Q&A toggle handler (runs once) ——— -->
-<script>
-(function () {
-  if (window.__qaToggleBound) return; 
-  window.__qaToggleBound = true;
-  document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.qa-toggle');
-    if (!btn) return;
-    const card = btn.closest('.qa-card');
-    const ans = card && card.querySelector('.qa-a');
-    if (ans) {
-      const isOpen = ans.style.display === 'block';
-      ans.style.display = isOpen ? 'none' : 'block';
-      btn.textContent = isOpen ? 'Show Answer' : 'Hide Answer';
-    }
-  });
-})();
-</script>
 </body>
 </html>
